@@ -1,3 +1,43 @@
-Hei GitHub!
-Tämä on ensimmäinen tiedostoni.
-Teen tätä ryhmäprojektia.
+TASO 1
+
+tilakone:
+odotustila -> napin painallus -> luetaan sensoridata -> tulostus terminaaliin (?) -> odotustila
+sendingdata    keskeytyskäsittelijä     readingData     printTask                        
+
+tarvitaan ainaki:
+napin keskeytyskäsittelijä void buttonFxn(uint gpio, uint32_t eventMask)
+
+taskit pitää aina alustaa mainissa, kuten myös kaikki pinnit
+
+pinnit:
+i2c väylä
+napille
+imu anturille
+(ledille)
+(näytölle)
+(buzzerille)
+(valolle)
+
+taskit:
+readingData (IMU)
+prinTask
+sendingData (?)
+
+funktiot mitä ei ole valmiina:
+getActivity() antaa vastauksen siihen että onko piste vai viiva numerolla (1, 2)
+
+
+piste on vaakatasossa (?) eli jos tulee vaikka kaksi pistettä niin se on lineaarinen kiihtyvyys
+z:n suhteen (z muuttuu)
+jos tulee pisteen jälkeen viiva (pystyasento) niin "vaihto" mitataan gyrolla z:n suhteen
+ja jos halutaan uusi viiva niin se saadaan y:n suhteen lineaarikiihtyvyydellä
+
+miten vitussa toimii että kun luen dataa niin se muuttuu morseksi, missä on ne funktiot
+annettu tuolla kirjastossa ??????
+
+
+ensin main funktio, johon pitää miettiä taskit ja sitten apufunktiot.
+globaalit muuttujat
+
+readingdatan logiikka:
+
