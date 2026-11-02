@@ -1,17 +1,21 @@
 TASO 1
 
 tilakone:
-odotustila -> napin painallus -> luetaan sensoridata -> tulostus terminaaliin (?) -> odotustila
-sendingdata    keskeytyskäsittelijä     readingData     printTask                        
+odotustila -> napin 1 painallus -> luetaan sensoridataa ja tehdään välilyöntejä -> napin 1 painallus -> tulostus terminaaliin (?) -> odotustila
+sendingdata    keskeytyskäsittelijä     readingData                           printTask                        
+tilat:
+waiting, dataready, print
 
 tarvitaan ainaki:
 napin keskeytyskäsittelijä void buttonFxn(uint gpio, uint32_t eventMask)
+jos tila on waiting niin sit datatilaan ja jos datatila niin sitten print
 
 taskit pitää aina alustaa mainissa, kuten myös kaikki pinnit
 
 pinnit:
-i2c väylä
-napille
+i2c väylä (automaattisesti)
+nappi 1 (rivinvaihtomerkki)
+nappi 2 (välilyönti ja asennon vahvistus)
 imu anturille
 (ledille)
 (näytölle)
@@ -20,11 +24,11 @@ imu anturille
 
 taskit:
 readingData (IMU)
-prinTask
-sendingData (?)
+printTask
 
 funktiot mitä ei ole valmiina:
-getActivity() antaa vastauksen siihen että onko piste vai viiva numerolla (1, 2)
+tämä readingdataan getActivity() antaa vastauksen siihen että onko piste vai viiva numerolla (1, 2)
+jokumuokkaus() muokkaa saadun morsen tekstiksi, tämä printTaskiin
 
 
 piste on vaakatasossa (?) eli jos tulee vaikka kaksi pistettä niin se on lineaarinen kiihtyvyys
@@ -39,5 +43,11 @@ annettu tuolla kirjastossa ??????
 ensin main funktio, johon pitää miettiä taskit ja sitten apufunktiot.
 globaalit muuttujat
 
-readingdatan logiikka:
+Laitteelta vastaanotettu Morse-muotoinen data tulostetaan terminaaliin, ja kun siitä havaitaan kaksi välilyöntiä, joita seuraa rivinvaihtomerkki, viesti itsessään muunnetaan tekstiksi ja tulostetaan ikkunaan. 
+Eli meinaa vissiin sitä että tulostettais merkki kerrallaan??
+
+
+readingData()
+
+onko järkevämpi pitää tuo pitkä lastMessage vai sitten pitää tallessa aina viestin viimeisin kirjain
 
