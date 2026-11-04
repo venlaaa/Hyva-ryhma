@@ -30,11 +30,14 @@ static void buttonFxn_2(uint gpio, uint32_t eventMask) {
 
 static void readingData(void *arg){
     (void)arg;
-    init_veml6030();
+    init_ICM42670();
    
     for(;;){
         if (programState == WAITING) {
-           programState = DATA_READY;
+        float ax, ay, az, gx, gy, gz, t;
+        ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
+        printf("ax: %f, ay: %f, az: %f, gx: %f, gy %f, gz %f, t %f \n", ax, ay, az, gx, gy, gz, t);
+           //programState = DATA_READY;
         }
         //printf("%d/n", veml6030_read_light());e
 
@@ -44,7 +47,7 @@ static void readingData(void *arg){
 
 static void printTask(void *arg){
     (void)arg;
-    while(1){
+    /*while(1){
         if (programState == PRINT) {
             for(int i = 0; i < 64; i++) {
                 if (lastMessage[i] == ' ' && lastMessage[i + 1] == ' ') {
@@ -57,7 +60,7 @@ static void printTask(void *arg){
                 printf("%c", lastMessage[i]);
             }
         }
-    }
+    }*/
     programState = WAITING;
         //printf("printTask\n");
         
@@ -74,16 +77,6 @@ int main() {
     init_sw1();
     init_sw2();
     init_ICM42670();
-    float *ax, ay, az, gx, gy, gz, t;
-    ICM42670_read_sensor_data	(	float * 	ax,
-    float * 	ay,
-    float * 	az,
-    float * 	gx,
-    float * 	gy,
-    float * 	gz,
-    float * 	t 
-    )
-    printf("ax: %f, ay: %f, az: %f, gx: %f, gy %f, gz %f, t %f \n", ax, ay, az, gx, gy, gz, t);
     
     
     //Keskeytyskäsittelijät
