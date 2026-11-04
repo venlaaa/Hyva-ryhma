@@ -44,29 +44,24 @@ static void readingData(void *arg){
 
 static void printTask(void *arg){
     (void)arg;
-    
     while(1){
         if (programState == PRINT) {
-            int counter;
             for(int i = 0; i < 64; i++) {
-                if (lastMessage[i] == valilyonti && lastMessage[i + 1] == valilyonti) {
-                    counter = 2;
-                    if (counter == 2) {
-                        if (lastMessage[i + 1] == rivinvaihto) {
+                if (lastMessage[i] == ' ' && lastMessage[i + 1] == ' ') {
+                    if (lastMessage[i + 2] == rivinvaihto) {
                             string = jokumuokkaus();
                             printf("string");
                             return 0;
+                        }
                     }
-                    counter = 0;
-                }
                 printf("%c", lastMessage[i]);
             }
-            programState = WAITING;
         }
+    }
+    programState = WAITING;
         //printf("printTask\n");
         
-        vTaskDelay(pdMS_TO_TICKS(500));
-    }
+    vTaskDelay(pdMS_TO_TICKS(500));
 }
 
 int main() {
