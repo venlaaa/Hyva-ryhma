@@ -74,6 +74,17 @@ int main() {
     init_sw1();
     init_sw2();
     init_ICM42670();
+    float *ax, ay, az, gx, gy, gz, t;
+    ICM42670_read_sensor_data	(	float * 	ax,
+    float * 	ay,
+    float * 	az,
+    float * 	gx,
+    float * 	gy,
+    float * 	gz,
+    float * 	t 
+    )
+    printf("ax: %f, ay: %f, az: %f, gx: %f, gy %f, gz %f, t %f \n", ax, ay, az, gx, gy, gz, t);
+    
     
     //Keskeytyskäsittelijät
     gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, buttonFxn_1);
