@@ -51,3 +51,5 @@ readingData()
 
 onko järkevämpi pitää tuo pitkä lastMessage vai sitten pitää tallessa aina viestin viimeisin kirjain
 
+
+pitää olla receivingMessage() task jossa kysytään että onko tietokoneelta lähetetty viestejä
