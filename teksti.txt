@@ -53,3 +53,6 @@ onko järkevämpi pitää tuo pitkä lastMessage vai sitten pitää tallessa ain
 
 
 pitää olla receivingMessage() task jossa kysytään että onko tietokoneelta lähetetty viestejä
+pitää lisätä ainakin tilat RECEIVING, SHOWANDPLAY (tulostaa viestin näytölle, sekä viestii ledinä (ja soittaa summeria)
+
+Lukeminen on symmetristä. Vakiofunktio getchar() suorittaa estävän luvun yhdelle merkille stdin:ista. Tällöin ohjelma odottaa, kunnes jotain saapuu USB-sarjayhteyden kautta. Jos et halua estävää toimintaa, Pico SDK tarjoaa getchar_timeout_us(timeout_us)-funktion. Kun aikaraja on nolla, kutsu muuttuu ei-estäväksi kyselyksi: jos tavu on saatavilla, saat sen epänegatiivisena paluuarvona; jos ei, tuloksena on PICO_ERROR_TIMEOUT. 
