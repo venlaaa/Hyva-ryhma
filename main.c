@@ -68,6 +68,7 @@ static void printTask(void *arg){
             for (int i = 0; i < messageLenght; i++) {
                 printf("%c", lastMessage[i]);
                 lastMessage[i] = NULL;
+                messageLenght = 0;
             }
         }
     }
@@ -75,6 +76,23 @@ static void printTask(void *arg){
         //printf("printTask\n");
         
     vTaskDelay(pdMS_TO_TICKS(500));
+}
+
+static void receivingData(void *arg) {
+    while(1) {
+        char final[] = [' ', ' ', ''\'', 'n'];
+        char lastFour[];
+        int t = getchar_timeout_us(0);
+        if (t >= 0) {
+            if (lastFour == final) {
+                programState = uusitila;
+            } else {
+                lastMessage[messageLenght++] = (char)t;
+                lastFour[]
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
 }
 
 int main() {
@@ -123,3 +141,4 @@ int main() {
     
     return 0;
 }
+
