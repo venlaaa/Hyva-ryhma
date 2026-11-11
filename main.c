@@ -12,31 +12,44 @@
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX      1
 
-enum state { WAITING=1, DATA_READY=2, PRINT=3};
+enum state { WAITING=1, READING=2, PRINT=3, RECEIVING=4};
 enum state programState = WAITING;
 
 //uint32_t ambientLight;
 char lastMessage[64];
+int messageLenght;
 
 
 static void buttonFxn_1(uint gpio, uint32_t eventMask) {
-    toggle_red_led ();
-    // Exercise 1: Toggle the LED using the appropriate function from the TKJHAT SDK.
+    if (programState == WAITING) {
+        programState == READING;
+    } else if (programState == READING) {
+        lastMessage[messageLenght + 1] = '\n';
+    }
 }
 
 static void buttonFxn_2(uint gpio, uint32_t eventMask) {
-    
+    if(programState == READING) {
+        lastMessage[sizeof(lastMessage) + 1] = ' ';
+        messageLenght ++;
+    }
 }
 
 static void readingData(void *arg){
     (void)arg;
     init_ICM42670();
+    ICM42670_start_with_default_values();
    
     for(;;){
-        if (programState == WAITING) {
-        float ax, ay, az, gx, gy, gz, t;
-        ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
-        printf("ax: %f, ay: %f, az: %f, gx: %f, gy %f, gz %f, t %f \n", ax, ay, az, gx, gy, gz, t);
+        if (programState == READING) {
+            float ax, ay, az, gx, gy, gz, t;
+            ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
+            if ((az > 0.8) || (az < -0.8)) {
+                lastMessage[
+            } else if ((az < 0.2) || (az < -0.2)) {
+                
+            }
+            //printf("ax: %f, ay: %f, az: %f, gx: %f, gy %f, gz %f, t %f \n", ax, ay, az, gx, gy, gz, t);
            //programState = DATA_READY;
         }
         //printf("%d/n", veml6030_read_light());e
@@ -113,4 +126,3 @@ int main() {
     
     return 0;
 }
-
