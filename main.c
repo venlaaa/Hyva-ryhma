@@ -41,7 +41,7 @@ static void buttonFxn_2(uint gpio, uint32_t eventMask) {
     }
 }
 
-static void readingData(void *arg){
+static void readingsFromIMU(void *arg){
     for(;;){
         if (programState == DATAREADY) {
             if (az > 0.8) {
@@ -67,6 +67,7 @@ static void printTask(void *arg){
         if (programState == PRINT) {
             for (int i = 0; i < messageLenght; i++) {
                 printf("%c", lastMessage[i]);
+                lastMessage[i] = NULL;
             }
         }
     }
@@ -92,14 +93,14 @@ int main() {
     gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, buttonFxn_1);
     gpio_set_irq_enabled_with_callback(SW2_PIN, GPIO_IRQ_EDGE_FALL, true, buttonFxn_2);
 
-    TaskHandle_t hReadingData, hPrintTask, hUSB = NULL;
+    TaskHandle_t hReadingsFromIMU, hPrintTask, hUSB = NULL;
 
-    BaseType_t result = xTaskCreate(readingData, // (en) Task function
+    BaseType_t result = xTaskCreate(readingsFromIMU, // (en) Task function
                 "sensor",                        // (en) Name of the task 
                 DEFAULT_STACK_SIZE,              // (en) Size of the stack for this task (in words). Generally 1024 or 2048
                 NULL,                            // (en) Arguments of the task 
                 2,                               // (en) Priority of this task
-                &hReadingData);                   // (en) A handle to control the execution of this task
+                &hReadingsFromIMU);                   // (en) A handle to control the execution of this task
 
     if(result != pdPASS) {
         printf("Sensor task creation failed\n");
@@ -122,4 +123,3 @@ int main() {
     
     return 0;
 }
-
