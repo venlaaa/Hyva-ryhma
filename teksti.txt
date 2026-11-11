@@ -14,8 +14,8 @@ taskit pitää aina alustaa mainissa, kuten myös kaikki pinnit
 
 pinnit:
 i2c väylä (automaattisesti)
-nappi 1 (rivinvaihtomerkki)
-nappi 2 (välilyönti ja asennon vahvistus)
+nappi 1 (aloitus rivinvaihtomerkki(lopetus)
+nappi 2 (välilyönti)
 imu anturille
 (ledille)
 (näytölle)
@@ -56,3 +56,9 @@ pitää olla receivingMessage() task jossa kysytään että onko tietokoneelta l
 pitää lisätä ainakin tilat RECEIVING, SHOWANDPLAY (tulostaa viestin näytölle, sekä viestii ledinä (ja soittaa summeria)
 
 Lukeminen on symmetristä. Vakiofunktio getchar() suorittaa estävän luvun yhdelle merkille stdin:ista. Tällöin ohjelma odottaa, kunnes jotain saapuu USB-sarjayhteyden kautta. Jos et halua estävää toimintaa, Pico SDK tarjoaa getchar_timeout_us(timeout_us)-funktion. Kun aikaraja on nolla, kutsu muuttuu ei-estäväksi kyselyksi: jos tavu on saatavilla, saat sen epänegatiivisena paluuarvona; jos ei, tuloksena on PICO_ERROR_TIMEOUT. 
+
+
+kynnysarvot:
+jos piste niin az > 0.8 ja az < -0.8
+jos viiva niin -0.2 < az < 0.2
+
