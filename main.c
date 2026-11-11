@@ -12,45 +12,48 @@
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX      1
 
-enum state { WAITING=1, READING=2, PRINT=3, RECEIVING=4};
+enum state { WAITING=1, READING=2, PRINT=3, RECEIVING=4, DATAREADY=5};
 enum state programState = WAITING;
 
 //uint32_t ambientLight;
 char lastMessage[64];
 int messageLenght;
+float ax, ay, az, gx, gy, gz, t;
 
 
 static void buttonFxn_1(uint gpio, uint32_t eventMask) {
     if (programState == WAITING) {
-        programState == READING;
+        programState = READING;
     } else if (programState == READING) {
-        lastMessage[messageLenght + 1] = '\n';
+        init_ICM42670();
+        ICM42670_start_with_default_values();
+        ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
+        programState = DATAREADY;
+        //lastMessage[messageLenght++] = '\n';
+        //programState = PRINT;
     }
 }
 
 static void buttonFxn_2(uint gpio, uint32_t eventMask) {
     if(programState == READING) {
-        lastMessage[sizeof(lastMessage) + 1] = ' ';
-        messageLenght ++;
+        lastMessage[messageLenght++] = '\n';
+        programState = PRINT;
     }
 }
 
 static void readingData(void *arg){
-    (void)arg;
-    init_ICM42670();
-    ICM42670_start_with_default_values();
-   
     for(;;){
-        if (programState == READING) {
-            float ax, ay, az, gx, gy, gz, t;
-            ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
-            if ((az > 0.8) || (az < -0.8)) {
-                lastMessage[
-            } else if ((az < 0.2) || (az < -0.2)) {
-                
+        if (programState == DATAREADY) {
+            if (az > 0.8) {
+                lastMessage[messageLenght++] = '.';
+            } else if (az < -0.8) {
+                lastMessage[messageLenght++] = '-';
+            } else if (((az < 0.2) || (az < -0.2))) {
+                lastMessage[messageLenght++] = ' ';
             }
+            programState = READING;
             //printf("ax: %f, ay: %f, az: %f, gx: %f, gy %f, gz %f, t %f \n", ax, ay, az, gx, gy, gz, t);
-           //programState = DATA_READY;
+            //programState = DATA_READY;
         }
         //printf("%d/n", veml6030_read_light());e
 
@@ -60,20 +63,13 @@ static void readingData(void *arg){
 
 static void printTask(void *arg){
     (void)arg;
-    /*while(1){
+    for(;;){
         if (programState == PRINT) {
-            for(int i = 0; i < 64; i++) {
-                if (lastMessage[i] == ' ' && lastMessage[i + 1] == ' ') {
-                    if (lastMessage[i + 2] == rivinvaihto) {
-                            string = jokumuokkaus();
-                            printf("string");
-                            return 0;
-                        }
-                    }
+            for (int i = 0; i < messageLenght; i++) {
                 printf("%c", lastMessage[i]);
             }
         }
-    }*/
+    }
     programState = WAITING;
         //printf("printTask\n");
         
@@ -126,3 +122,4 @@ int main() {
     
     return 0;
 }
+
