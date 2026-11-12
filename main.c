@@ -100,6 +100,7 @@ int main() {
     init_sw2();
     init_ICM42670();
     init_led();
+    init_buzzer();
     
     
     //Keskeytyskäsittelijät
