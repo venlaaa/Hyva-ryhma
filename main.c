@@ -12,7 +12,7 @@
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX      1
 
-enum state { WAITING=1, READING=2, PRINT=3, RECEIVING=4, DATAREADY=5, SHOWANDPLAY=6};
+enum state { WAITING=1, READING=2, PRINT=3, RECEIVING=4, POSITIONREADY=5, SHOWANDPLAY=6};
 enum state programState = WAITING;
 
 //uint32_t ambientLight;
@@ -25,7 +25,7 @@ static void buttonFxn_1(uint gpio, uint32_t eventMask) {
     if (programState == WAITING) {
         programState = READING;
     } else if (programState == READING) {
-        programState = DATAREADY;
+        programState = POSITIONREADY;
     }
 }
 
@@ -38,7 +38,7 @@ static void buttonFxn_2(uint gpio, uint32_t eventMask) {
 
 static void readingsFromIMU(void *arg){
     for(;;){
-        if (programState == DATAREADY) {
+        if (programState == POSITIONREADY) {
             ICM42670_start_with_default_values();
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
             if (az > 0.8) {
@@ -89,6 +89,31 @@ static void receivingData(void *arg) {
     }
 }
 
+static void LEDAndDisplay() {
+    if (programState = SHOWANDPLAY) {
+        for (int i = 0; i < messageLenght; i++) {
+            if (lastMessage[i] = ".") {
+                blink_led_red(1);
+            } else if (lastMessage[i] = "-") {
+                toggle_red_led();
+                vTaskDelay(pdMS_TO_TICKS(1500));
+                toggle_red_led();
+            } else if (lastMessage[i] = " ") {
+                vTaskDelay(pdMS_TO_TICKS(1500));
+            }
+        }
+        playMusic();
+        programState = WAITING;
+    }
+}
+
+void playMusic() {
+    buzzer_play_tone(247, 1000);
+    buzzer_play_tone(262, 1000);
+    buzzer_play_tone(165, 500);
+    buzzer_play_tone(196, 1500);
+}
+
 int main() {
 
     stdio_init_all();
@@ -119,6 +144,7 @@ int main() {
         printf("Sensor task creation failed\n");
         return 0;
     }
+
     result = xTaskCreate(printTask,  // (en) Task function
                 "print",              // (en) Name of the task 
                 DEFAULT_STACK_SIZE,   // (en) Size of the stack for this task (in words). Generally 1024 or 2048
@@ -131,12 +157,29 @@ int main() {
         return 0;
     }
 
-    result = xTaskCreate(hLEDAndDisplay, 
+    result = xTaskCreate(receivingData,
+                "receive",
+                DEFAULT_STACK_SIZE,
+                NULL,
+                2,
+                &hReceivingData)
+
+    if(result != pdPASS) {
+        printf("Print Task creation failed\n");
+        return 0;
+    }
+
+    result = xTaskCreate(LEDAndDisplay, 
                 "show", 
                 DEFAULT_STACK_SIZE,
                 NULL,
                 2,
                 &hLEDAndDisplay);
+
+    if(result != pdPASS) {
+        printf("Print Task creation failed\n");
+        return 0;
+    }
 
     // Start the scheduler (never returns)
     vTaskStartScheduler();
