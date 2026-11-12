@@ -25,17 +25,12 @@ static void buttonFxn_1(uint gpio, uint32_t eventMask) {
     if (programState == WAITING) {
         programState = READING;
     } else if (programState == READING) {
-        init_ICM42670();
-        ICM42670_start_with_default_values();
-        ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
         programState = DATAREADY;
-        //lastMessage[messageLenght++] = '\n';
-        //programState = PRINT;
     }
 }
 
 static void buttonFxn_2(uint gpio, uint32_t eventMask) {
-    if(programState == READING) {
+    if (programState == READING) {
         lastMessage[messageLenght++] = '\n';
         programState = PRINT;
     }
@@ -44,6 +39,8 @@ static void buttonFxn_2(uint gpio, uint32_t eventMask) {
 static void readingsFromIMU(void *arg){
     for(;;){
         if (programState == DATAREADY) {
+            ICM42670_start_with_default_values();
+            ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
             if (az > 0.8) {
                 lastMessage[messageLenght++] = '.';
             } else if (az < -0.8) {
@@ -52,12 +49,9 @@ static void readingsFromIMU(void *arg){
                 lastMessage[messageLenght++] = ' ';
             }
             programState = READING;
-            //printf("ax: %f, ay: %f, az: %f, gx: %f, gy %f, gz %f, t %f \n", ax, ay, az, gx, gy, gz, t);
-            //programState = DATA_READY;
         }
-        //printf("%d/n", veml6030_read_light());e
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -80,18 +74,18 @@ static void printTask(void *arg){
 
 static void receivingData(void *arg) {
     while(1) {
-        char final[] = [' ', ' ', ''\'', 'n'];
-        char lastFour[];
         int t = getchar_timeout_us(0);
         if (t >= 0) {
-            if (lastFour == final) {
-                programState = uusitila;
-            } else {
-                lastMessage[messageLenght++] = (char)t;
-                lastFour[]
+            lastMessage[messageLenght++] = (char)t;
+            if (messageLenght >= 3) {
+                if ((lastMessage[messageLenght - 3] == ' ' && 
+                        lastMessage[messageLenght - 2] == ' ' && 
+                        lastMessage[messageLenght - 1] == '\n')) {
+                    programState = uusitila;
+                }
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -105,6 +99,7 @@ int main() {
     init_sw1();
     init_sw2();
     init_ICM42670();
+    init_led();
     
     
     //Keskeytyskäsittelijät
@@ -141,4 +136,3 @@ int main() {
     
     return 0;
 }
-
