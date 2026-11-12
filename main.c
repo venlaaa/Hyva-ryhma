@@ -12,7 +12,7 @@
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX      1
 
-enum state { WAITING=1, READING=2, PRINT=3, RECEIVING=4, DATAREADY=5};
+enum state { WAITING=1, READING=2, PRINT=3, RECEIVING=4, DATAREADY=5, SHOWANDPLAY=6};
 enum state programState = WAITING;
 
 //uint32_t ambientLight;
@@ -81,7 +81,7 @@ static void receivingData(void *arg) {
                 if ((lastMessage[messageLenght - 3] == ' ' && 
                         lastMessage[messageLenght - 2] == ' ' && 
                         lastMessage[messageLenght - 1] == '\n')) {
-                    programState = uusitila;
+                    programState = SHOWANDPLAY;
                 }
             }
         }
@@ -100,14 +100,13 @@ int main() {
     init_sw2();
     init_ICM42670();
     init_led();
-    init_buzzer();
     
     
     //Keskeytyskäsittelijät
     gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, buttonFxn_1);
     gpio_set_irq_enabled_with_callback(SW2_PIN, GPIO_IRQ_EDGE_FALL, true, buttonFxn_2);
 
-    TaskHandle_t hReadingsFromIMU, hPrintTask, hUSB = NULL;
+    TaskHandle_t hReadingsFromIMU, hPrintTask, hReceivingData, hLEDAndDisplay = NULL;
 
     BaseType_t result = xTaskCreate(readingsFromIMU, // (en) Task function
                 "sensor",                        // (en) Name of the task 
@@ -131,6 +130,13 @@ int main() {
         printf("Print Task creation failed\n");
         return 0;
     }
+
+    result = xTaskCreate(hLEDAndDisplay, 
+                "show", 
+                DEFAULT_STACK_SIZE,
+                NULL,
+                2,
+                &hLEDAndDisplay);
 
     // Start the scheduler (never returns)
     vTaskStartScheduler();
