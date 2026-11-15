@@ -12,7 +12,7 @@
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX      1
 
-enum state { WAITING=1, READING=2, PRINT=3, RECEIVING=4, POSITIONREADY=5, SHOWANDPLAY=6};
+volatile enum state { WAITING=1, READING=2, PRINT=3, RECEIVING=4, POSITIONREADY=5, SHOWANDPLAY=6};
 enum state programState = WAITING;
 
 //uint32_t ambientLight;
@@ -37,7 +37,8 @@ static void buttonFxn_2(uint gpio, uint32_t eventMask) {
 }
 
 static void readingsFromIMU(void *arg){
-    for(;;){
+    (void) arg;
+    while(1) {
         if (programState == POSITIONREADY) {
             ICM42670_start_with_default_values();
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
@@ -50,29 +51,27 @@ static void readingsFromIMU(void *arg){
             }
             programState = READING;
         }
-
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
 static void printTask(void *arg){
-    (void)arg;
-    for(;;){
+    (void) arg;
+    while(1) {
         if (programState == PRINT) {
             for (int i = 0; i < messageLenght; i++) {
                 printf("%c", lastMessage[i]);
-                lastMessage[i] = NULL;
-                messageLenght = 0;
+                lastMessage[i] = '\0';
             }
+            messageLenght = 0;
+            programState = WAITING;
         }
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
-    programState = WAITING;
-        //printf("printTask\n");
-        
-    vTaskDelay(pdMS_TO_TICKS(500));
 }
 
 static void receivingData(void *arg) {
+    (void) arg;
     while(1) {
         int t = getchar_timeout_us(0);
         if (t >= 0) {
@@ -89,16 +88,17 @@ static void receivingData(void *arg) {
     }
 }
 
-static void LEDAndDisplay() {
-    if (programState = SHOWANDPLAY) {
+static void LEDAndDisplay(void *arg) {
+    (void) arg;
+    if (programState == SHOWANDPLAY) {
         for (int i = 0; i < messageLenght; i++) {
-            if (lastMessage[i] = ".") {
+            if (lastMessage[i] = '.') {
                 blink_led_red(1);
-            } else if (lastMessage[i] = "-") {
+            } else if (lastMessage[i] = '-') {
                 toggle_red_led();
                 vTaskDelay(pdMS_TO_TICKS(1500));
                 toggle_red_led();
-            } else if (lastMessage[i] = " ") {
+            } else if (lastMessage[i] = ' ') {
                 vTaskDelay(pdMS_TO_TICKS(1500));
             }
         }
@@ -108,10 +108,15 @@ static void LEDAndDisplay() {
 }
 
 void playMusic() {
-    buzzer_play_tone(247, 1000);
-    buzzer_play_tone(262, 1000);
-    buzzer_play_tone(165, 500);
-    buzzer_play_tone(196, 1500);
+    buzzer_play_tone(247, 500);
+    buzzer_play_tone(262, 500);
+    buzzer_play_tone(165, 1000);
+    buzzer_play_tone(196, 2000);
+    buzzer_play_tone(247, 500);
+    buzzer_play_tone(262, 500);
+    buzzer_play_tone(165, 1000);
+    buzzer_play_tone(196, 1000);
+    buzzer_play_tone(175, 1000);
 }
 
 int main() {
@@ -128,8 +133,8 @@ int main() {
     
     
     //Keskeytyskäsittelijät
-    gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, buttonFxn_1);
-    gpio_set_irq_enabled_with_callback(SW2_PIN, GPIO_IRQ_EDGE_FALL, true, buttonFxn_2);
+    gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, &buttonFxn_1);
+    gpio_set_irq_enabled_with_callback(SW2_PIN, GPIO_IRQ_EDGE_FALL, true, &buttonFxn_2);
 
     TaskHandle_t hReadingsFromIMU, hPrintTask, hReceivingData, hLEDAndDisplay = NULL;
 
@@ -162,7 +167,7 @@ int main() {
                 DEFAULT_STACK_SIZE,
                 NULL,
                 2,
-                &hReceivingData)
+                &hReceivingData);
 
     if(result != pdPASS) {
         printf("Print Task creation failed\n");
@@ -186,3 +191,4 @@ int main() {
     
     return 0;
 }
+
