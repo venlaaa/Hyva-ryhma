@@ -1,22 +1,32 @@
+//Vastaanotetut symbolit on näytettävä LCD-näytöllä
+//(nimenomaan picon vastaanottamat eli ne mitkä lähetetään koneelta)
+//0,96 tuuman OLED-näyttö
+//yksivärisen OLED-moduulin resoluutio on 128x64 pikseliä, ja se käyttää SSD1306-näyttöohjainta.
+//mitä tapahtuu kun luetaan . ja mitä kun -
+
+
 static void LEDAndDisplay() {
     if (programState = SHOWANDPLAY) {
         init_display();
         ssd1306_clear(&disp);
         ssd1306_show(&disp);
         for (int i = 0; i < messageLenght; i++) {
-            if (lastMessage[i] = ".") {
+
+            if (lastMessage[i] == '.') {
                 blink_led_red(1);
                 write_text(".");
-            } else if (lastMessage[i] = "-") {
+                ssd1306_show(&disp);
+                vTaskDelay(pdMS_TO_TICKS(2000));
+            } else if (lastMessage[i] == '-') {
                 toggle_red_led();
                 write_text("-");
+                ssd1306_show(&disp);
                 vTaskDelay(pdMS_TO_TICKS(1500));
                 toggle_red_led();
-            } else if (lastMessage[i] = " ") {
+            } else if (lastMessage[i] == ' ') {
                 ssd1306_clear(&disp);
                 vTaskDelay(pdMS_TO_TICKS(1500));
             }
-            ssd1306_show(&disp);
         }
         playMusic();
         programState = WAITING;
