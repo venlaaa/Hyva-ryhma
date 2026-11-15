@@ -40,7 +40,6 @@ static void readingsFromIMU(void *arg){
     (void) arg;
     while(1) {
         if (programState == POSITIONREADY) {
-            ICM42670_start_with_default_values();
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
             if (az > 0.8) {
                 lastMessage[messageLenght++] = '.';
@@ -129,6 +128,7 @@ int main() {
     init_sw1();
     init_sw2();
     init_ICM42670();
+    ICM42670_start_with_default_values();
     init_led();
     
     
