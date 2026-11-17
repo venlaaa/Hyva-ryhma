@@ -112,25 +112,6 @@ static void receivingData(void *arg) {
     }
 }
 
-static void LEDAndDisplay(void *arg) {
-    (void) arg;
-    if (programState == SHOWANDPLAY) {
-        for (int i = 0; i < messageLenght; i++) {
-            if (lastMessage[i] = '.') {
-                blink_led_red(1);
-            } else if (lastMessage[i] = '-') {
-                toggle_red_led();
-                vTaskDelay(pdMS_TO_TICKS(1500));
-                toggle_red_led();
-            } else if (lastMessage[i] = ' ') {
-                vTaskDelay(pdMS_TO_TICKS(1500));
-            }
-        }
-        playMusic();
-        programState = WAITING;
-    }
-}
-
 void playMusic() {
     buzzer_play_tone(247, 500);
     buzzer_play_tone(262, 500);
@@ -141,6 +122,25 @@ void playMusic() {
     buzzer_play_tone(165, 1000);
     buzzer_play_tone(196, 1000);
     buzzer_play_tone(175, 1000);
+}
+
+static void LEDAndDisplay(void *arg) {
+    (void) arg;
+    if (programState == SHOWANDPLAY) {
+        for (int i = 0; i < messageLenght; i++) {
+            if (lastMessage[i] == '.') {
+                blink_led_red(1);
+            } else if (lastMessage[i] == '-') {
+                toggle_red_led();
+                vTaskDelay(pdMS_TO_TICKS(1500));
+                toggle_red_led();
+            } else if (lastMessage[i] == ' ') {
+                vTaskDelay(pdMS_TO_TICKS(1500));
+            }
+        }
+        playMusic();
+        programState = WAITING;
+    }
 }
 
 static void readingLight(void *arg) {
@@ -255,3 +255,15 @@ int main() {
     
     return 0;
 }
+
+
+/*
+- main() keskeytyskäsittelijät
+-LEDAnsDisplay ikuisen silmukan puute
+-LEDAndDisplay taskin viiveen puute
+-receivingData välilyöntilogiikka
+-readingsFromImu kolmas ehto
+-taulukon ylivuodon tarkistuksen puute
+-volatile muuttujat (button_last_click, button_counter, 
+messageLenght, lastMessage)
+*/
