@@ -12,57 +12,71 @@
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX      1
 
-static uint32_t button_last_click = 0;
-static int button_counter = 0;
+void playMusic();
+
+volatile static uint32_t button_last_click = 0;
+volatile static int button_counter = 0;
 
 volatile enum state { WAITING=1, READING=2, PRINT=3, POSITIONREADY=4, SHOWANDPLAY=5, READING_LUX=6};
-enum state programState = WAITING;
+volatile enum state programState = WAITING;
 
 //uint32_t ambientLight;
-char lastMessage[64];
-int messageLenght = 0;
+volatile char lastMessage[64];
+volatile int messageLenght = 0;
 float ax, ay, az, gx, gy, gz, t;
 
-
-static void buttonFxn_1(uint gpio, uint32_t eventMask) {
-    if (programState == WAITING) {
-        programState = READING;
-    } else if (programState == READING) {
-        programState = POSITIONREADY;
-    }
+//Soittaa lyhyen melodian kun työasemalta saapunut viesti on näytetty
+//ledin ja näytön avulla.
+void playMusic() {
+    buzzer_play_tone(247, 500);
+    buzzer_play_tone(262, 500);
+    buzzer_play_tone(165, 1000);
+    buzzer_play_tone(196, 2000);
+    buzzer_play_tone(247, 500);
+    buzzer_play_tone(262, 500);
+    buzzer_play_tone(165, 1000);
+    buzzer_play_tone(196, 1000);
+    buzzer_play_tone(175, 1000);
 }
 
-static void buttonFxn_2(uint gpio, uint32_t eventMask) {
-    if (programState == READING || programState == READING_LUX) {
-        uint32_t now = time_us_32();
 
-        if (now - button_last_click < 400000 && button_counter == 1) {
-
-            // Toinen painallus -> rivinvaihto
-            button_counter = 0;
-            lastMessage[messageLenght++] = '\n';
-            programState = PRINT;
-
-        } else {
-
-            // Ensimmäinen painallus -> välilyönti
-            button_counter = 1;
-            button_last_click = now;
+static void buttonFxn(uint gpio, uint32_t eventMask) {
+    if (gpio == SW1_PIN) {
+       if (programState == WAITING) {
+            programState = READING;
+        } else if (programState == READING) {
+            programState = POSITIONREADY;
+        }
+    } else if (gpio == SW2_PIN) {
+        if (programState == READING || programState == READING_LUX) {
+            uint32_t now = time_us_32();
+            if (now - button_last_click < 800000 && button_counter == 1) {
+                // Toinen painallus -> rivinvaihto
+                button_counter = 0;
+                lastMessage[messageLenght++] = '\n';
+                programState = PRINT;
+            } else {
+                // Ensimmäinen painallus -> välilyönti
+                button_counter = 1;
+                button_last_click = now;
+            }
         }
     }
 }
 
+
+//Tarkistetaan IMU-anturin asento napin 1 painalluksen jälkeen.
+//Vaaka-asento on piste, ja toisinpäin vaaka-asento on viiva.
 static void readingsFromIMU(void *arg){
     (void) arg;
     while(1) {
         if (programState == POSITIONREADY) {
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
-            if (az > 0.8) {
+            //aluperin az vaihdoimme ay
+            if (ay > 0.8) {
                 lastMessage[messageLenght++] = '.';
-            } else if (az < -0.8) {
+            } else if (ay < -0.8) {
                 lastMessage[messageLenght++] = '-';
-            } else if (((az < 0.2) || (az < -0.2))) {
-                lastMessage[messageLenght++] = ' ';
             }
             programState = READING;
         }
@@ -70,6 +84,7 @@ static void readingsFromIMU(void *arg){
     }
 }
 
+//Tulostaa lähetetyn viestin, jonka jälkeen siirrytään odotustilaan.
 static void printTask(void *arg){
     (void) arg;
     while(1) {
@@ -85,6 +100,9 @@ static void printTask(void *arg){
     }
 }
 
+//Vastaanotetaan työasemalta viestejä.
+//Kun on tullut kaksi välilyöntiä ja rivinvaihto, siirrytään
+//näyttämään viesti ledin ja näytön avulla.
 static void receivingData(void *arg) {
     (void) arg;
     while(1) {
@@ -100,55 +118,49 @@ static void receivingData(void *arg) {
             }
         }
         if (button_counter == 1 &&
-            time_us_32() - button_last_click >= 400000) {
+            time_us_32() - button_last_click >= 800000) {
 
             lastMessage[messageLenght++] = ' ';
-
             button_counter = 0;
-            programState = PRINT;
         }
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
-void playMusic() {
-    buzzer_play_tone(247, 500);
-    buzzer_play_tone(262, 500);
-    buzzer_play_tone(165, 1000);
-    buzzer_play_tone(196, 2000);
-    buzzer_play_tone(247, 500);
-    buzzer_play_tone(262, 500);
-    buzzer_play_tone(165, 1000);
-    buzzer_play_tone(196, 1000);
-    buzzer_play_tone(175, 1000);
-}
-
+//Näytetään työasemalta tullut viesti ledin ja näytön avulla
+//merkki kerrallaan.
 static void LEDAndDisplay(void *arg) {
     (void) arg;
-    if (programState == SHOWANDPLAY) {
-        for (int i = 0; i < messageLenght; i++) {
-            if (lastMessage[i] == '.') {
-                blink_led_red(1);
-            } else if (lastMessage[i] == '-') {
-                toggle_red_led();
-                vTaskDelay(pdMS_TO_TICKS(1500));
-                toggle_red_led();
-            } else if (lastMessage[i] == ' ') {
-                vTaskDelay(pdMS_TO_TICKS(1500));
+    while(1) {
+        if (programState == SHOWANDPLAY) {
+            for (int i = 0; i < messageLenght; i++) {
+                if (lastMessage[i] == '.') {
+                    blink_led_red(1);
+                } else if (lastMessage[i] == '-') {
+                    toggle_red_led();
+                    vTaskDelay(pdMS_TO_TICKS(1500));
+                    toggle_red_led();
+                } else if (lastMessage[i] == ' ') {
+                    vTaskDelay(pdMS_TO_TICKS(1500));
+                }
             }
+            messageLenght = 0;
+            playMusic();
+            programState = WAITING;
         }
-        playMusic();
-        programState = WAITING;
-    }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }   
 }
 
+//Luetaan merkkejä luxejen avulla kun ei käytetä IMU-anturia.
+//Aloitetaan viestintä jos on tosi pimeää.
 static void readingLight(void *arg) {
     (void)arg;
     while(1) {
         uint32_t lux = veml6030_read_light();
         if (programState == WAITING) {
-            if (lux < 10){
+            if (lux > 800){
                 programState = READING_LUX;
                 vTaskDelay(pdMS_TO_TICKS(2000));
             }
@@ -156,9 +168,9 @@ static void readingLight(void *arg) {
 
         if (programState == READING_LUX) {
             lux = veml6030_read_light();
-            if (lux < 50) {
+            if (lux < 20) {
                 lastMessage[messageLenght ++] = '.';            
-            } else {
+            } else if (lux > 800) {
                 lastMessage[messageLenght ++] = '-';
             }
             vTaskDelay(pdMS_TO_TICKS(2000));
@@ -174,8 +186,8 @@ int main() {
     sleep_ms(300); //Wait some time so initialization of USB and hat is done.
 
     //Alustetaan sensorit ja aktuaattorit.
-    init_sw1();
-    init_sw2();
+    init_sw1(); //nappi 1
+    init_sw2(); //nappi 2
     init_ICM42670();
     ICM42670_start_with_default_values();
     init_led();
@@ -184,8 +196,8 @@ int main() {
     
     
     //Keskeytyskäsittelijät
-    gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, &buttonFxn_1);
-    gpio_set_irq_enabled_with_callback(SW2_PIN, GPIO_IRQ_EDGE_FALL, true, &buttonFxn_2);
+    gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, &buttonFxn);
+    gpio_set_irq_enabled(SW2_PIN, GPIO_IRQ_EDGE_FALL, true);
 
     TaskHandle_t hReadingsFromIMU, hPrintTask, hReceivingData, hLEDAndDisplay, hReadingLight = NULL;
 
@@ -201,12 +213,12 @@ int main() {
         return 0;
     }
 
-    result = xTaskCreate(printTask,  // (en) Task function
-                "print",              // (en) Name of the task 
-                DEFAULT_STACK_SIZE,   // (en) Size of the stack for this task (in words). Generally 1024 or 2048
-                NULL,                 // (en) Arguments of the task 
-                2,                    // (en) Priority of this task
-                &hPrintTask);         // (en) A handle to control the execution of this task
+    result = xTaskCreate(printTask, 
+                "print",              
+                DEFAULT_STACK_SIZE,   
+                NULL,                 
+                2,                    
+                &hPrintTask);         
 
     if(result != pdPASS) {
         printf("Print Task creation failed\n");
@@ -259,8 +271,6 @@ int main() {
 
 /*
 - main() keskeytyskäsittelijät
--LEDAnsDisplay ikuisen silmukan puute
--LEDAndDisplay taskin viiveen puute
 -receivingData välilyöntilogiikka
 -readingsFromImu kolmas ehto
 -taulukon ylivuodon tarkistuksen puute
