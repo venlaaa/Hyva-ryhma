@@ -52,7 +52,7 @@ static void buttonFxn_2(uint gpio, uint32_t eventMask) {
     if (programState == READING || programState == READING_LUX) {
         uint32_t now = time_us_32();
 
-        if (now - button_last_click < 40000 && button_counter == 1) {
+        if (now - button_last_click < 800000 && button_counter == 1) {
 
             // Toinen painallus -> rivinvaihto
             button_counter = 0;
@@ -75,9 +75,10 @@ static void readingsFromIMU(void *arg){
     while(1) {
         if (programState == POSITIONREADY) {
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
-            if (az > 0.8) {
+            //aluperin az vaihdoimme ay
+            if (ay > 0.8) {
                 lastMessage[messageLenght++] = '.';
-            } else if (az < -0.8) {
+            } else if (ay < -0.8) {
                 lastMessage[messageLenght++] = '-';
             }
             programState = READING;
@@ -120,7 +121,7 @@ static void receivingData(void *arg) {
             }
         }
         if (button_counter == 1 &&
-            time_us_32() - button_last_click >= 40000) {
+            time_us_32() - button_last_click >= 800000) {
 
             lastMessage[messageLenght++] = ' ';
 
@@ -162,7 +163,7 @@ static void readingLight(void *arg) {
     while(1) {
         uint32_t lux = veml6030_read_light();
         if (programState == WAITING) {
-            if (lux < 10){
+            if (lux < 20){
                 programState = READING_LUX;
                 vTaskDelay(pdMS_TO_TICKS(2000));
             }
@@ -170,9 +171,9 @@ static void readingLight(void *arg) {
 
         if (programState == READING_LUX) {
             lux = veml6030_read_light();
-            if (lux < 50) {
+            if (lux < 20) {
                 lastMessage[messageLenght ++] = '.';            
-            } else {
+            } else if (lux > 800) {
                 lastMessage[messageLenght ++] = '-';
             }
             vTaskDelay(pdMS_TO_TICKS(2000));
