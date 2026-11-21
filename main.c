@@ -17,10 +17,9 @@ void playMusic();
 volatile static uint32_t button_last_click = 0;
 volatile static int button_counter = 0;
 
-volatile enum state { WAITING=1, READING=2, PRINT=3, POSITIONREADY=4, SHOWANDPLAY=5, READING_LUX=6};
+enum state { WAITING=1, READING=2, PRINT=3, POSITIONREADY=4, SHOWANDPLAY=5, READING_LUX=6};
 volatile enum state programState = WAITING;
 
-//uint32_t ambientLight;
 volatile char lastMessage[64];
 volatile int messageLenght = 0;
 
