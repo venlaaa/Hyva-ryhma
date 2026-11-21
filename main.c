@@ -23,7 +23,6 @@ volatile enum state programState = WAITING;
 //uint32_t ambientLight;
 volatile char lastMessage[64];
 volatile int messageLenght = 0;
-float ax, ay, az, gx, gy, gz, t;
 
 //Soittaa lyhyen melodian kun työasemalta saapunut viesti on näytetty
 //ledin ja näytön avulla.
@@ -73,6 +72,7 @@ static void readingsFromIMU(void *arg){
     (void) arg;
     while(1) {
         if (programState == POSITIONREADY) {
+            float ax, ay, az, gx, gy, gz, t;
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
             //aluperin az vaihdoimme ay
             if (ay > 0.8 && messageLenght < 63) {
