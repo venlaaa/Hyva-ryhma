@@ -121,10 +121,10 @@ static void receivingData(void *arg) {
             }
         }
         if (button_counter == 1 &&
-            time_us_32() - button_last_click >= 800000
-            && messageLenght < 63) {
-
-            lastMessage[messageLenght++] = ' ';
+            time_us_32() - button_last_click >= 800000) {
+                if (messageLenght < 63) {
+                    lastMessage[messageLenght++] = ' ';
+                }
             button_counter = 0;
         }
 
