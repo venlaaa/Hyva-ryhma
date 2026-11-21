@@ -139,7 +139,7 @@ static void LEDAndDisplay(void *arg) {
         if (programState == SHOWANDPLAY) {
             for (int i = 0; i < messageLenght; i++) {
                 if (lastMessage[i] == '.') {
-                    blink_led_red(1);
+                    blink_red_led(1);
                 } else if (lastMessage[i] == '-') {
                     toggle_red_led();
                     vTaskDelay(pdMS_TO_TICKS(1500));
