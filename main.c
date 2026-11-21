@@ -14,15 +14,15 @@
 
 void playMusic();
 
-static uint32_t button_last_click = 0;
-static int button_counter = 0;
+volatile static uint32_t button_last_click = 0;
+volatile static int button_counter = 0;
 
 volatile enum state { WAITING=1, READING=2, PRINT=3, POSITIONREADY=4, SHOWANDPLAY=5, READING_LUX=6};
-enum state programState = WAITING;
+volatile enum state programState = WAITING;
 
 //uint32_t ambientLight;
-char lastMessage[64];
-int messageLenght = 0;
+volatile char lastMessage[64];
+volatile int messageLenght = 0;
 float ax, ay, az, gx, gy, gz, t;
 
 //Soittaa lyhyen melodian kun työasemalta saapunut viesti on näytetty
@@ -40,33 +40,32 @@ void playMusic() {
 }
 
 
-static void buttonFxn_1(uint gpio, uint32_t eventMask) {
-    if (programState == WAITING) {
-        programState = READING;
-    } else if (programState == READING) {
-        programState = POSITIONREADY;
-    }
-}
-
-static void buttonFxn_2(uint gpio, uint32_t eventMask) {
-    if (programState == READING || programState == READING_LUX) {
-        uint32_t now = time_us_32();
-
-        if (now - button_last_click < 400000 && button_counter == 1) {
-
-            // Toinen painallus -> rivinvaihto
-            button_counter = 0;
-            lastMessage[messageLenght++] = '\n';
-            programState = PRINT;
-
-        } else {
-
-            // Ensimmäinen painallus -> välilyönti
-            button_counter = 1;
-            button_last_click = now;
+static void buttonFxn(uint gpio, uint32_t eventMask) {
+    if (gpio == SW1_PIN) {
+       if (programState == WAITING) {
+            programState = READING;
+        } else if (programState == READING) {
+            programState = POSITIONREADY;
+        }
+    } else if (gpio == SW2_PIN) {
+        if (programState == READING || programState == READING_LUX) {
+            uint32_t now = time_us_32();
+            if (now - button_last_click < 800000 && button_counter == 1) {
+                // Toinen painallus -> rivinvaihto
+                button_counter = 0;
+                if (messageLenght < 63) {
+                    lastMessage[messageLenght++] = '\n';
+                }
+                programState = PRINT;
+            } else {
+                // Ensimmäinen painallus -> välilyönti
+                button_counter = 1;
+                button_last_click = now;
+            }
         }
     }
 }
+
 
 //Tarkistetaan IMU-anturin asento napin 1 painalluksen jälkeen.
 //Vaaka-asento on piste, ja toisinpäin vaaka-asento on viiva.
@@ -75,12 +74,11 @@ static void readingsFromIMU(void *arg){
     while(1) {
         if (programState == POSITIONREADY) {
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
-            if (az > 0.8) {
+            //aluperin az vaihdoimme ay
+            if (ay > 0.8 && messageLenght < 63) {
                 lastMessage[messageLenght++] = '.';
-            } else if (az < -0.8) {
+            } else if (ay < -0.8 && messageLenght < 63) {
                 lastMessage[messageLenght++] = '-';
-            } else if (((az < 0.2) || (az < -0.2))) {
-                lastMessage[messageLenght++] = ' ';
             }
             programState = READING;
         }
@@ -95,7 +93,6 @@ static void printTask(void *arg){
         if (programState == PRINT) {
             for (int i = 0; i < messageLenght; i++) {
                 printf("%c", lastMessage[i]);
-                lastMessage[i] = '\0';
             }
             messageLenght = 0;
             programState = WAITING;
@@ -110,24 +107,25 @@ static void printTask(void *arg){
 static void receivingData(void *arg) {
     (void) arg;
     while(1) {
-        int t = getchar_timeout_us(0);
-        if (t >= 0) {
-            lastMessage[messageLenght++] = (char)t;
-            if (messageLenght >= 3) {
-                if ((lastMessage[messageLenght - 3] == ' ' && 
+        if ( programState == WAITING) {
+            int t = getchar_timeout_us(0);
+            if (t >= 0 && messageLenght < 63) {
+                lastMessage[messageLenght++] = (char)t;
+                if (messageLenght >= 3) {
+                    if ((lastMessage[messageLenght - 3] == ' ' && 
                         lastMessage[messageLenght - 2] == ' ' && 
                         lastMessage[messageLenght - 1] == '\n')) {
-                    programState = SHOWANDPLAY;
+                            programState = SHOWANDPLAY;
+                    }
                 }
             }
         }
         if (button_counter == 1 &&
-            time_us_32() - button_last_click >= 400000) {
+            time_us_32() - button_last_click >= 800000
+            && messageLenght < 63) {
 
             lastMessage[messageLenght++] = ' ';
-
             button_counter = 0;
-            programState = PRINT;
         }
 
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -151,6 +149,7 @@ static void LEDAndDisplay(void *arg) {
                     vTaskDelay(pdMS_TO_TICKS(1500));
                 }
             }
+            messageLenght = 0;
             playMusic();
             programState = WAITING;
         }
@@ -159,23 +158,23 @@ static void LEDAndDisplay(void *arg) {
 }
 
 //Luetaan merkkejä luxejen avulla kun ei käytetä IMU-anturia.
-//Aloitetaan viestintä jos on tosi pimeää.
+//Aloitetaan viestintä jos on tosi kirkasta.
 static void readingLight(void *arg) {
     (void)arg;
     while(1) {
         uint32_t lux = veml6030_read_light();
         if (programState == WAITING) {
-            if (lux < 10){
+            if (lux > 800){
                 programState = READING_LUX;
                 vTaskDelay(pdMS_TO_TICKS(2000));
             }
         }
 
-        if (programState == READING_LUX) {
+        else if (programState == READING_LUX) {
             lux = veml6030_read_light();
-            if (lux < 50) {
+            if (lux < 20 && messageLenght < 63) {
                 lastMessage[messageLenght ++] = '.';            
-            } else {
+            } else if (lux > 800 && messageLenght < 63) {
                 lastMessage[messageLenght ++] = '-';
             }
             vTaskDelay(pdMS_TO_TICKS(2000));
@@ -201,8 +200,8 @@ int main() {
     
     
     //Keskeytyskäsittelijät
-    gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, &buttonFxn_1);
-    gpio_set_irq_enabled_with_callback(SW2_PIN, GPIO_IRQ_EDGE_FALL, true, &buttonFxn_2);
+    gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, &buttonFxn);
+    gpio_set_irq_enabled(SW2_PIN, GPIO_IRQ_EDGE_FALL, true);
 
     TaskHandle_t hReadingsFromIMU, hPrintTask, hReceivingData, hLEDAndDisplay, hReadingLight = NULL;
 
@@ -272,13 +271,3 @@ int main() {
     
     return 0;
 }
-
-
-/*
-- main() keskeytyskäsittelijät
--receivingData välilyöntilogiikka
--readingsFromImu kolmas ehto
--taulukon ylivuodon tarkistuksen puute
--volatile muuttujat (button_last_click, button_counter, 
-messageLenght, lastMessage)
-*/
