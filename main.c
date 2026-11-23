@@ -4,16 +4,16 @@
 #include <pico/stdlib.h>
 
 #include <FreeRTOS.h>
-#include <queue.h>
 #include <task.h>
 
 #include "tkjhat/sdk.h"
 
 #define DEFAULT_STACK_SIZE 2048
-#define CDC_ITF_TX      1
+//#define CDC_ITF_TX      1
 
 void playMusic();
 
+//Alustetaan globaalit muuttujat sekä tilakone.
 volatile static uint32_t button_last_click = 0;
 volatile static int button_counter = 0;
 
@@ -36,7 +36,6 @@ void playMusic() {
     buzzer_play_tone(196, 1000);
     buzzer_play_tone(175, 1000);
 }
-
 
 static void buttonFxn(uint gpio, uint32_t eventMask) {
     if (gpio == SW1_PIN) {
@@ -64,7 +63,6 @@ static void buttonFxn(uint gpio, uint32_t eventMask) {
     }
 }
 
-
 //Tarkistetaan IMU-anturin asento napin 1 painalluksen jälkeen.
 //Vaaka-asento on piste, ja toisinpäin vaaka-asento on viiva.
 static void readingsFromIMU(void *arg){
@@ -85,6 +83,32 @@ static void readingsFromIMU(void *arg){
     }
 }
 
+//Luetaan merkkejä luxejen avulla kun ei käytetä IMU-anturia.
+//Aloitetaan viestintä jos on tosi kirkasta.
+static void readingLight(void *arg) {
+    (void)arg;
+    while(1) {
+        uint32_t lux = veml6030_read_light();
+        if (programState == WAITING) {
+            if (lux > 800){
+                programState = READING_LUX;
+                vTaskDelay(pdMS_TO_TICKS(2000));
+            }
+        }
+
+        else if (programState == READING_LUX) {
+            lux = veml6030_read_light();
+            if (lux < 20 && messageLenght < 63) {
+                lastMessage[messageLenght ++] = '.';            
+            } else if (lux > 800 && messageLenght < 63) {
+                lastMessage[messageLenght ++] = '-';
+            }
+            vTaskDelay(pdMS_TO_TICKS(2000));
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
 //Tulostaa lähetetyn viestin, jonka jälkeen siirrytään odotustilaan.
 static void printTask(void *arg){
     (void) arg;
@@ -93,6 +117,8 @@ static void printTask(void *arg){
             for (int i = 0; i < messageLenght; i++) {
                 printf("%c", lastMessage[i]);
             }
+            fflush(stdout);
+            memset((char*)lastMessage, 0, sizeof(lastMessage));
             messageLenght = 0;
             programState = WAITING;
         }
@@ -148,38 +174,13 @@ static void LEDAndDisplay(void *arg) {
                     vTaskDelay(pdMS_TO_TICKS(1500));
                 }
             }
-            messageLenght = 0;
             playMusic();
+            memset((char*)lastMessage, 0, sizeof(lastMessage));
+            messageLenght = 0;
             programState = WAITING;
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }   
-}
-
-//Luetaan merkkejä luxejen avulla kun ei käytetä IMU-anturia.
-//Aloitetaan viestintä jos on tosi kirkasta.
-static void readingLight(void *arg) {
-    (void)arg;
-    while(1) {
-        uint32_t lux = veml6030_read_light();
-        if (programState == WAITING) {
-            if (lux > 800){
-                programState = READING_LUX;
-                vTaskDelay(pdMS_TO_TICKS(2000));
-            }
-        }
-
-        else if (programState == READING_LUX) {
-            lux = veml6030_read_light();
-            if (lux < 20 && messageLenght < 63) {
-                lastMessage[messageLenght ++] = '.';            
-            } else if (lux > 800 && messageLenght < 63) {
-                lastMessage[messageLenght ++] = '-';
-            }
-            vTaskDelay(pdMS_TO_TICKS(2000));
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
 }
 
 int main() {
@@ -264,9 +265,14 @@ int main() {
         return 0;
     }
     
+    //Laitteen alustus onnistui.
+    printf("Initialization OK!\n");
+    //blink_red_led(1);
 
-    // Start the scheduler (never returns)
+    //Käynnistetään RTOS.
     vTaskStartScheduler();
     
-    return 0;
+    //Päädytään tänne vain jos vuorontajan käynnistys epäonnistui.
+    printf("Scheduler failed to start!\n");
+    return 1;
 }
