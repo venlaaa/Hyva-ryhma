@@ -9,7 +9,6 @@
 #include "tkjhat/sdk.h"
 
 #define DEFAULT_STACK_SIZE 2048
-//#define CDC_ITF_TX      1
 
 void playMusic();
 
@@ -77,10 +76,10 @@ static void readingsFromIMU(void *arg){
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
             if (az > 0.8 && messageLenght < 63) {
                 lastMessage[messageLenght++] = '.';
-                printf(":");
+                buzzer_play_tone(247, 500);
             } else if (az < -0.8 && messageLenght < 63) {
                 lastMessage[messageLenght++] = '-';
-                printf(",");
+                buzzer_play_tone(247, 1000);
             }
             programState = READING;
         }
@@ -97,7 +96,6 @@ static void readingLight(void *arg) {
         if (programState == WAITING) {
             lux  = veml6030_read_light();
             if (lux > 800){
-                printf("toimii");
                 programState = READING_LUX;
                 vTaskDelay(pdMS_TO_TICKS(2000));
             }
@@ -106,11 +104,11 @@ static void readingLight(void *arg) {
         else if (programState == READING_LUX) {
             lux = veml6030_read_light();
             if (lux < 20 && messageLenght < 63) {
-                printf(",");
-                lastMessage[messageLenght ++] = '.';            
+                lastMessage[messageLenght ++] = '.';
+                buzzer_play_tone(247, 500);            
             } else if (lux > 800 && messageLenght < 63) {
-                printf(":");
                 lastMessage[messageLenght ++] = '-';
+                buzzer_play_tone(247, 1000);
             }
             vTaskDelay(pdMS_TO_TICKS(2000));
         }
@@ -159,6 +157,7 @@ static void receivingData(void *arg) {
             time_us_32() - sw2_last_click >= 800000) {
                 if (messageLenght < 63) {
                     lastMessage[messageLenght++] = ' ';
+                    buzzer_play_tone(247, 100); 
                 }
             sw2_counter = 0;
         }
@@ -179,14 +178,17 @@ static void LEDAndDisplay(void *arg) {
                 if (lastMessage[i] == '.') {
                     blink_red_led(1);
                     write_text(".");
+                    buzzer_play_tone(247, 500); 
                     vTaskDelay(pdMS_TO_TICKS(1500));
                 } else if (lastMessage[i] == '-') {
                     toggle_red_led();
                     write_text("-");
+                    buzzer_play_tone(247, 1000); 
                     vTaskDelay(pdMS_TO_TICKS(750));
                     toggle_red_led();
                 } else if (lastMessage[i] == ' ') {
                     write_text(" ");
+                    buzzer_play_tone(247, 100); 
                     vTaskDelay(pdMS_TO_TICKS(1000));
                     clear_display();
                 }
