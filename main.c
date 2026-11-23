@@ -166,14 +166,24 @@ static void LEDAndDisplay(void *arg) {
     (void) arg;
     while(1) {
         if (programState == SHOWANDPLAY) {
+            init_display();
+            ssd1306_clear(&disp);
+            ssd1306_show(&disp);
             for (int i = 0; i < messageLenght; i++) {
+                ssd1306_clear(&disp);
                 if (lastMessage[i] == '.') {
-                    blink_red_led(1);
+                    blink_led_red(1);
+                    write_text(".");
+                    ssd1306_show(&disp);
+                    vTaskDelay(pdMS_TO_TICKS(2000));
                 } else if (lastMessage[i] == '-') {
                     toggle_red_led();
+                    write_text("-");
+                    ssd1306_show(&disp);
                     vTaskDelay(pdMS_TO_TICKS(1500));
                     toggle_red_led();
                 } else if (lastMessage[i] == ' ') {
+                    ssd1306_clear(&disp);
                     vTaskDelay(pdMS_TO_TICKS(1500));
                 }
             }
