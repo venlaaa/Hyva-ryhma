@@ -55,8 +55,8 @@ static void buttonFxn(uint gpio, uint32_t eventMask) {
                 sw2_counter = 0;
                 if (messageLenght < 63) {
                     lastMessage[messageLenght++] = '\n';
+                    programState = PRINT;
                 }
-                programState = PRINT;
             } else {
                 // Ensimmäinen painallus -> välilyönti
                 sw2_counter = 1;
@@ -72,13 +72,15 @@ static void readingsFromIMU(void *arg){
     (void) arg;
     while(1) {
         if (programState == POSITIONREADY) {
+            printf("reading \n");
             float ax, ay, az, gx, gy, gz, t;
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
-            //aluperin az vaihdoimme ay
-            if (ay > 0.8 && messageLenght < 63) {
+            if (az > 0.8 && messageLenght < 63) {
                 lastMessage[messageLenght++] = '.';
-            } else if (ay < -0.8 && messageLenght < 63) {
+                printf(":");
+            } else if (az < -0.8 && messageLenght < 63) {
                 lastMessage[messageLenght++] = '-';
+                printf(",");
             }
             programState = READING;
         }
@@ -91,9 +93,11 @@ static void readingsFromIMU(void *arg){
 static void readingLight(void *arg) {
     (void)arg;
     while(1) {
-        uint32_t lux = veml6030_read_light();
+        uint32_t lux;
         if (programState == WAITING) {
+            lux  = veml6030_read_light();
             if (lux > 800){
+                printf("toimii");
                 programState = READING_LUX;
                 vTaskDelay(pdMS_TO_TICKS(2000));
             }
@@ -102,8 +106,10 @@ static void readingLight(void *arg) {
         else if (programState == READING_LUX) {
             lux = veml6030_read_light();
             if (lux < 20 && messageLenght < 63) {
+                printf(",");
                 lastMessage[messageLenght ++] = '.';            
             } else if (lux > 800 && messageLenght < 63) {
+                printf(":");
                 lastMessage[messageLenght ++] = '-';
             }
             vTaskDelay(pdMS_TO_TICKS(2000));
@@ -124,6 +130,7 @@ static void printTask(void *arg){
             memset((char*)lastMessage, 0, sizeof(lastMessage));
             messageLenght = 0;
             programState = WAITING;
+            vTaskDelay(pdMS_TO_TICKS(50));
         }
         vTaskDelay(pdMS_TO_TICKS(50));
     }
@@ -135,7 +142,7 @@ static void printTask(void *arg){
 static void receivingData(void *arg) {
     (void) arg;
     while(1) {
-        if ( programState == WAITING) {
+        if (programState == WAITING) {
             int t = getchar_timeout_us(0);
             if (t >= 0 && messageLenght < 63) {
                 lastMessage[messageLenght++] = (char)t;
@@ -166,25 +173,22 @@ static void LEDAndDisplay(void *arg) {
     (void) arg;
     while(1) {
         if (programState == SHOWANDPLAY) {
-            init_display();
-            ssd1306_clear(&disp);
-            ssd1306_show(&disp);
+            clear_display();
             for (int i = 0; i < messageLenght; i++) {
-                ssd1306_clear(&disp);
+                clear_display();
                 if (lastMessage[i] == '.') {
-                    blink_led_red(1);
+                    blink_red_led(1);
                     write_text(".");
-                    ssd1306_show(&disp);
-                    vTaskDelay(pdMS_TO_TICKS(2000));
+                    vTaskDelay(pdMS_TO_TICKS(1500));
                 } else if (lastMessage[i] == '-') {
                     toggle_red_led();
                     write_text("-");
-                    ssd1306_show(&disp);
-                    vTaskDelay(pdMS_TO_TICKS(1500));
+                    vTaskDelay(pdMS_TO_TICKS(750));
                     toggle_red_led();
                 } else if (lastMessage[i] == ' ') {
-                    ssd1306_clear(&disp);
-                    vTaskDelay(pdMS_TO_TICKS(1500));
+                    write_text(" ");
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    clear_display();
                 }
             }
             playMusic();
@@ -209,6 +213,8 @@ int main() {
     ICM42670_start_with_default_values();
     init_led();
     init_veml6030();
+    init_display();
+    init_buzzer();
 
     
     
@@ -280,7 +286,6 @@ int main() {
     
     //Laitteen alustus onnistui.
     printf("Initialization OK!\n");
-    blink_red_led(3);
 
     //Käynnistetään RTOS.
     vTaskStartScheduler();
