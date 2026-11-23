@@ -14,8 +14,8 @@
 void playMusic();
 
 //Alustetaan globaalit muuttujat sekä tilakone.
-volatile static uint32_t button_last_click = 0;
-volatile static int button_counter = 0;
+volatile static uint32_t sw2_last_click = 0;
+volatile static int sw2_counter = 0;
 
 enum state { WAITING=1, READING=2, PRINT=3, POSITIONREADY=4, SHOWANDPLAY=5, READING_LUX=6};
 volatile enum state programState = WAITING;
@@ -38,26 +38,29 @@ void playMusic() {
 }
 
 static void buttonFxn(uint gpio, uint32_t eventMask) {
+    uint32_t now = time_us_32();
     if (gpio == SW1_PIN) {
-       if (programState == WAITING) {
-            programState = READING;
-        } else if (programState == READING) {
-            programState = POSITIONREADY;
+        static uint32_t sw1_last_click = 0;
+        if (now - sw1_last_click > 50000) {
+            if (programState == WAITING) {
+                programState = READING;
+            } else if (programState == READING) {
+                programState = POSITIONREADY;
+            }
         }
     } else if (gpio == SW2_PIN) {
         if (programState == READING || programState == READING_LUX) {
-            uint32_t now = time_us_32();
-            if (now - button_last_click < 800000 && button_counter == 1) {
+            if (now - sw2_last_click < 800000 && sw2_counter == 1) {
                 // Toinen painallus -> rivinvaihto
-                button_counter = 0;
+                sw2_counter = 0;
                 if (messageLenght < 63) {
                     lastMessage[messageLenght++] = '\n';
                 }
                 programState = PRINT;
             } else {
                 // Ensimmäinen painallus -> välilyönti
-                button_counter = 1;
-                button_last_click = now;
+                sw2_counter = 1;
+                sw2_last_click = now;
             }
         }
     }
@@ -145,12 +148,12 @@ static void receivingData(void *arg) {
                 }
             }
         }
-        if (button_counter == 1 &&
-            time_us_32() - button_last_click >= 800000) {
+        if (sw2_counter == 1 &&
+            time_us_32() - sw2_last_click >= 800000) {
                 if (messageLenght < 63) {
                     lastMessage[messageLenght++] = ' ';
                 }
-            button_counter = 0;
+            sw2_counter = 0;
         }
 
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -267,7 +270,7 @@ int main() {
     
     //Laitteen alustus onnistui.
     printf("Initialization OK!\n");
-    //blink_red_led(1);
+    blink_red_led(3);
 
     //Käynnistetään RTOS.
     vTaskStartScheduler();
