@@ -13,7 +13,7 @@
 void playMusic();
 
 //Alustetaan globaalit muuttujat sekä tilakone.
-volatile static uint32_t sw2_last_click = 0;
+//volatile static uint32_t sw2_last_click = 0;
 volatile static int sw2_counter = 0;
 
 enum state { WAITING=1, READING=2, PRINT=3, POSITIONREADY=4, SHOWANDPLAY=5, READING_LUX=6};
