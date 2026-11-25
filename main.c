@@ -25,15 +25,15 @@ volatile int messageLenght = 0;
 //Soittaa lyhyen melodian kun työasemalta saapunut viesti on näytetty
 //ledin ja näytön avulla.
 void playMusic() {
-    buzzer_play_tone(247, 500);
-    buzzer_play_tone(262, 500);
-    buzzer_play_tone(165, 1000);
-    buzzer_play_tone(196, 2000);
-    buzzer_play_tone(247, 500);
-    buzzer_play_tone(262, 500);
-    buzzer_play_tone(165, 1000);
-    buzzer_play_tone(196, 1000);
-    buzzer_play_tone(175, 1000);
+    buzzer_play_tone(247, 300);
+    buzzer_play_tone(262, 300);
+    buzzer_play_tone(165, 600);
+    buzzer_play_tone(196, 1200);
+    buzzer_play_tone(247, 300);
+    buzzer_play_tone(262, 300);
+    buzzer_play_tone(165, 600);
+    buzzer_play_tone(196, 600);
+    buzzer_play_tone(175, 600);
 }
 
 static void buttonFxn(uint gpio, uint32_t eventMask) {
@@ -48,7 +48,16 @@ static void buttonFxn(uint gpio, uint32_t eventMask) {
             }
         }
     } else if (gpio == SW2_PIN) {
-        if (programState == READING || programState == READING_LUX) {
+        sw2_counter++;
+        if (sw2_counter == 1 || sw2_counter == 2) {
+            lastMessage[messageLenght++] = ' ';
+        } else if (sw2_counter == 3) {
+            lastMessage[messageLenght++] = '\n';
+            programState = PRINT;
+            sw2_counter = 0;
+        }
+    }
+        /*if (programState == READING || programState == READING_LUX) {
             if (now - sw2_last_click < 800000 && sw2_counter == 1) {
                 // Toinen painallus -> rivinvaihto
                 sw2_counter = 0;
@@ -61,8 +70,7 @@ static void buttonFxn(uint gpio, uint32_t eventMask) {
                 sw2_counter = 1;
                 sw2_last_click = now;
             }
-        }
-    }
+        }*/
 }
 
 //Tarkistetaan IMU-anturin asento napin 1 painalluksen jälkeen.
@@ -71,14 +79,15 @@ static void readingsFromIMU(void *arg){
     (void) arg;
     while(1) {
         if (programState == POSITIONREADY) {
-            printf("reading \n");
             float ax, ay, az, gx, gy, gz, t;
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
             if (az > 0.8 && messageLenght < 63) {
                 lastMessage[messageLenght++] = '.';
+                sw2_counter = 0;
                 buzzer_play_tone(247, 500);
             } else if (az < -0.8 && messageLenght < 63) {
                 lastMessage[messageLenght++] = '-';
+                sw2_counter = 0;
                 buzzer_play_tone(247, 1000);
             }
             programState = READING;
@@ -95,19 +104,20 @@ static void readingLight(void *arg) {
         uint32_t lux;
         if (programState == WAITING) {
             lux  = veml6030_read_light();
-            if (lux > 800){
+            if (lux > 5000){
                 programState = READING_LUX;
                 vTaskDelay(pdMS_TO_TICKS(2000));
             }
         }
-
-        else if (programState == READING_LUX) {
+        else if (programState == READING_LUX ) {
             lux = veml6030_read_light();
             if (lux < 20 && messageLenght < 63) {
                 lastMessage[messageLenght ++] = '.';
+                sw2_counter = 0;
                 buzzer_play_tone(247, 500);            
-            } else if (lux > 800 && messageLenght < 63) {
+            } else if (lux > 5000 && messageLenght < 63) {
                 lastMessage[messageLenght ++] = '-';
+                sw2_counter = 0;
                 buzzer_play_tone(247, 1000);
             }
             vTaskDelay(pdMS_TO_TICKS(2000));
@@ -120,10 +130,11 @@ static void readingLight(void *arg) {
 static void printTask(void *arg){
     (void) arg;
     while(1) {
-        if (programState == PRINT) {
+        if (programState == PRINT || messageLenght == 64) {
             for (int i = 0; i < messageLenght; i++) {
                 printf("%c", lastMessage[i]);
             }
+            playMusic();
             fflush(stdout);
             memset((char*)lastMessage, 0, sizeof(lastMessage));
             messageLenght = 0;
@@ -153,14 +164,14 @@ static void receivingData(void *arg) {
                 }
             }
         }
-        if (sw2_counter == 1 &&
+        /*if (sw2_counter == 1 &&
             time_us_32() - sw2_last_click >= 800000) {
                 if (messageLenght < 63) {
                     lastMessage[messageLenght++] = ' ';
                     buzzer_play_tone(247, 100); 
                 }
             sw2_counter = 0;
-        }
+        }*/
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }
@@ -217,6 +228,8 @@ int main() {
     init_veml6030();
     init_display();
     init_buzzer();
+
+    clear_display();
 
     
     
