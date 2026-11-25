@@ -25,6 +25,7 @@ volatile int messageLenght = 0;
 //Soittaa lyhyen melodian kun työasemalta saapunut viesti on näytetty
 //ledin ja näytön avulla.
 void playMusic() {
+    //Jonna
     buzzer_play_tone(247, 300);
     buzzer_play_tone(262, 300);
     buzzer_play_tone(165, 600);
@@ -37,6 +38,7 @@ void playMusic() {
 }
 
 static void buttonFxn(uint gpio, uint32_t eventMask) {
+    //Together
     uint32_t now = time_us_32();
     if (gpio == SW1_PIN) {
         static uint32_t sw1_last_click = 0;
@@ -76,6 +78,7 @@ static void buttonFxn(uint gpio, uint32_t eventMask) {
 //Tarkistetaan IMU-anturin asento napin 1 painalluksen jälkeen.
 //Vaaka-asento on piste, ja toisinpäin vaaka-asento on viiva.
 static void readingsFromIMU(void *arg){
+    //Together
     (void) arg;
     while(1) {
         if (programState == POSITIONREADY) {
@@ -99,6 +102,7 @@ static void readingsFromIMU(void *arg){
 //Luetaan merkkejä luxejen avulla kun ei käytetä IMU-anturia.
 //Aloitetaan viestintä jos on tosi kirkasta.
 static void readingLight(void *arg) {
+    //Oona 
     (void)arg;
     while(1) {
         uint32_t lux;
@@ -128,6 +132,7 @@ static void readingLight(void *arg) {
 
 //Tulostaa lähetetyn viestin, jonka jälkeen siirrytään odotustilaan.
 static void printTask(void *arg){
+    //Together
     (void) arg;
     while(1) {
         if (programState == PRINT || messageLenght == 64) {
@@ -149,6 +154,7 @@ static void printTask(void *arg){
 //Kun on tullut kaksi välilyöntiä ja rivinvaihto, siirrytään
 //näyttämään viesti ledin ja näytön avulla.
 static void receivingData(void *arg) {
+    //Together
     (void) arg;
     while(1) {
         if (programState == WAITING) {
@@ -180,6 +186,7 @@ static void receivingData(void *arg) {
 //Näytetään työasemalta tullut viesti ledin ja näytön avulla
 //merkki kerrallaan.
 static void LEDAndDisplay(void *arg) {
+    //Display - Venla, LED - Jonna
     (void) arg;
     while(1) {
         if (programState == SHOWANDPLAY) {
